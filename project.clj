@@ -8,6 +8,8 @@
                  [clj-jgit "0.8.10"]
                  [org.clojure/data.json "0.2.6"]
                  [me.raynes/fs "1.4.6"]
+                 [buddy/buddy-auth "2.1.0"]
+                 [metosin/compojure-api "2.0.0-alpha30"]
                  ]
   :plugins [[lein-ring "0.12.5"]]
   :ring {:handler git-diary-api.handler/app}

@@ -11,7 +11,7 @@ Simple:
 
 ## Endpoints
 
-All operations below are working directly with the git repository beeing managed. There is an expectation that the repository is managed only by this API, merge conflicts are not handled by the API. While the manual addition of a post directly in the repository is supported, it is not recommended.
+All operations below are working directly with the git repository beeing managed. There is an expectation that the repository is managed only by this API, merge conflicts are not handled by the API. While the manual addition of a post directly in the repository is supported, it is not recommended. All requests must be authorized with a header: `Authorization Token <token>`.
 
 * GET /posts/
     * returns a JSON list of strings containing all the post names

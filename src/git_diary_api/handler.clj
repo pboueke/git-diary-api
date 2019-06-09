@@ -2,11 +2,18 @@
   (:use clj-jgit.porcelain
         )
   (:require [clojure.data.json :as json]
+            [schema.core :as s]
             [me.raynes.fs :as fs] 
-            [compojure.core :refer :all]
-            [compojure.route :as route]
+            [compojure.api.sweet :refer :all]
+            [ring.util.http-response :refer :all]
+            [buddy.auth.backends :as backends]
+            [buddy.auth.accessrules :refer [wrap-access-rules]]
+            [buddy.auth :refer [authenticated?]]
+            [compojure.api.meta :refer [restructure-param]]
+            [buddy.auth.middleware :refer [wrap-authentication]]
             [ring.middleware.defaults :refer [wrap-defaults api-defaults]]))
 
+;; Configuration
 (def config (json/read-str (slurp "config.json")))
 (def repo (load-repo (get config "repositoryPath")))
 (def url (get config "repositoryUrl"))
@@ -14,21 +21,49 @@
 (def sshk-path (get config "sshKeyPath"))
 (def name (get config "name"))
 (def email (get config "email"))
+(def tokens {(keyword (get config "apiToken")) :admin})
+
+;; Authorization
+(defn my-authfn
+  [req token]
+  (let [token (keyword token)]
+    (get tokens token nil)))
+
+(def backend
+  (backends/token
+   {:authfn my-authfn}))
+
+(defn access-error [req val]
+  {:status 401 :headers {} :body "Unauthorized"})
+
+(defn wrap-rule [handler rule]
+  (-> handler
+      (wrap-access-rules {:rules [{:pattern #".*"
+                                   :handler rule}]
+                          :on-error access-error})))
+
+(defmethod restructure-param :auth-rules
+  [_ rule acc]
+  (update-in acc [:middleware] conj [wrap-rule rule]))
+
+;; Utilities
+(s/defschema Post
+  {:title s/Str
+   :body s/Str})
 
 (defn re-index []
   (let [index-path  "posts/index.json"]
     (spit (str repo-path "/" index-path) (json/write-str (map fs/name (fs/list-dir (str repo-path "/posts")))))
     (git-add repo index-path)))
 
+;; Routes
 (defn posts []
   (with-identity {:name sshk-path :exclusive true}
     (git-pull repo)) 
   (json/write-str (filter (fn [x] (not (= x "index"))) (map fs/name (fs/list-dir (str repo-path "/posts"))))))
 
-(defn new-post [req]
-  (let [title (get req "title")
-        body (get req "body")
-        filename (str (.format (new java.text.SimpleDateFormat "yyyy-MM-dd-") (java.util.Date.))
+(defn new-post [title body]
+  (let [filename (str (.format (new java.text.SimpleDateFormat "yyyy-MM-dd-") (java.util.Date.))
                       (clojure.string/replace title #" " "-") ".md")
         file-url (str url "/tree/master/posts/" filename)]
     (with-identity {:name sshk-path :exclusive true}
@@ -56,13 +91,23 @@
       (git-push repo))
     (json/write-str (list name))))
 
-(defroutes app-routes
-  (GET "/" [] "Up and running!")
-  (GET "/posts" [] (posts))
-  (PUT "/post/new" request (new-post (json/read-str (slurp (:body request)))))
-  (GET "/post/:name" [name] (get-post name))
-  (DELETE "/post/:name" [name] (delete-post name))
-  (route/not-found "Route not found!"))
+;; App
+(def api-app
+  (api
+   (GET "/" [] "Up and running!")
+   (GET "/posts" [] 
+     :auth-rules authenticated? 
+     (posts))
+   (PUT "/post/new" request 
+     :auth-rules authenticated? 
+     :body [{:keys [title body]} Post]
+     (new-post title body))
+   (GET "/post/:name" [name] 
+     :auth-rules authenticated? 
+     (get-post name))
+   (DELETE "/post/:name" [name] 
+     :auth-rules authenticated? 
+     (delete-post name))))
 
-(def app
-  (wrap-defaults app-routes api-defaults))
+(def app (-> api-app
+             (wrap-authentication backend)))
