@@ -31,6 +31,12 @@ You will need [Leiningen][] 2.0.0 or above installed.
 
 [leiningen]: https://github.com/technomancy/leiningen
 
+Git must be installed in the API host, and the managed repository must be cloned there. A ssh key is required for pushing changes to the remote repository.
+
+## Config
+
+The `config.json` file must be configured with info related to your repository and user.
+
 ## Running
 
 To start a web server for the application, run:
