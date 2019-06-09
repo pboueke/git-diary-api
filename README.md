@@ -1,10 +1,17 @@
 # git-diary-api
 
-Simple API that manages a git repository containing diary/blog posts
+Simple API that manages a git repository containing diary/blog posts.
+
+Simple:
+
+* Posts only contain a title and a body
+* The only metadata is the date, contained in the post name
+* No databases, only a git repository
+* All posts contained in a single fonder, `posts`
 
 ## Endpoints
 
-All operations below are working directly with the git repository. There is an expectation that the repository is managed only by this API, merge conflicts are not handled by the API. While the manual addition of a post directly in the repository is supported, it is not recommended
+All operations below are working directly with the git repository beeing managed. There is an expectation that the repository is managed only by this API, merge conflicts are not handled by the API. While the manual addition of a post directly in the repository is supported, it is not recommended.
 
 * GET /posts/
     * returns a JSON list of strings containing all the post names
