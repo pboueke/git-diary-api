@@ -15,10 +15,15 @@
 (def name (get config "name"))
 (def email (get config "email"))
 
+(defn re-index []
+  (let [index-path  "posts/index.json"]
+    (spit (str repo-path "/" index-path) (json/write-str (map fs/name (fs/list-dir (str repo-path "/posts")))))
+    (git-add repo index-path)))
+
 (defn posts []
   (with-identity {:name sshk-path :exclusive true}
     (git-pull repo)) 
-  (json/write-str (map fs/name (fs/list-dir (str repo-path "/posts")))))
+  (json/write-str (filter (fn [x] (not (= x "index"))) (map fs/name (fs/list-dir (str repo-path "/posts"))))))
 
 (defn new-post [req]
   (let [title (get req "title")
@@ -30,6 +35,7 @@
       (git-pull repo))
     (spit (str repo-path "/posts/" filename) (str "# " title "\n\n" body))
     (git-add repo (str "posts/" filename))
+    (re-index)
     (git-commit repo (str "Add file " filename) {:name name :email email})
     (with-identity {:name sshk-path :exclusive true} 
       (git-push repo))
@@ -44,6 +50,7 @@
   (let [filename (str name ".md")]
     (fs/delete (str repo-path "/posts/" filename))
     (git-rm repo (str "posts/" filename))
+    (re-index)
     (git-commit repo (str "Remove file " filename) {:name name :email email})
     (with-identity {:name sshk-path :exclusive true}
       (git-push repo))
