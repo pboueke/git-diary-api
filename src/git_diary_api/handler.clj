@@ -29,20 +29,22 @@
         file-url (str url "/tree/master/posts/" filename)]
     (with-identity {:name sshk-path :exclusive true}
       (git-pull repo))
-    (spit (str repo-path "/posts/" filename) body)
+    (spit (str repo-path "/posts/" filename) (str "# " title "\n\n" body))
     (git-add repo (str "posts/" filename))
     (git-commit repo (str "Add file " filename) {:name name :email email})
     (with-identity {:name sshk-path :exclusive true} 
       (git-push repo))
-    (json/write-str (list file-url))
-    ))
+    (json/write-str (list file-url))))
     
+(defn get-post [name]
+  (slurp (str repo-path "/posts/" name ".md")))
 
 
 (defroutes app-routes
   (GET "/" [] "Up and running!")
   (GET "/posts" [] (posts))
   (PUT "/post/new" request (new-post (json/read-str (slurp (:body request)))))
+  (GET "/post/:name" [name] (get-post name))
   (route/not-found "Route not found!"))
 
 (def app
