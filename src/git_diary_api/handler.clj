@@ -7,7 +7,6 @@
             [compojure.route :as route]
             [ring.middleware.defaults :refer [wrap-defaults api-defaults]]))
 
-
 (def config (json/read-str (slurp "config.json")))
 (def repo (load-repo (get config "repositoryPath")))
 (def url (get config "repositoryUrl"))
@@ -37,14 +36,25 @@
     (json/write-str (list file-url))))
     
 (defn get-post [name]
+  (with-identity {:name sshk-path :exclusive true}
+    (git-pull repo))
   (slurp (str repo-path "/posts/" name ".md")))
 
+(defn delete-post [name]
+  (let [filename (str name ".md")]
+    (fs/delete (str repo-path "/posts/" filename))
+    (git-rm repo (str "posts/" filename))
+    (git-commit repo (str "Remove file " filename) {:name name :email email})
+    (with-identity {:name sshk-path :exclusive true}
+      (git-push repo))
+    (json/write-str (list name))))
 
 (defroutes app-routes
   (GET "/" [] "Up and running!")
   (GET "/posts" [] (posts))
   (PUT "/post/new" request (new-post (json/read-str (slurp (:body request)))))
   (GET "/post/:name" [name] (get-post name))
+  (DELETE "/post/:name" [name] (delete-post name))
   (route/not-found "Route not found!"))
 
 (def app
