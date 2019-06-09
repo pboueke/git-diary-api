@@ -5,26 +5,45 @@
             [me.raynes.fs :as fs] 
             [compojure.core :refer :all]
             [compojure.route :as route]
-            [ring.middleware.defaults :refer [wrap-defaults site-defaults]]))
+            [ring.middleware.defaults :refer [wrap-defaults api-defaults]]))
 
 
 (def config (json/read-str (slurp "config.json")))
 (def repo (load-repo (get config "repositoryPath")))
+(def url (get config "repositoryUrl"))
 (def repo-path (get config "repositoryPath"))
 (def sshk-path (get config "sshKeyPath"))
+(def name (get config "name"))
+(def email (get config "email"))
 
 (defn posts []
   (with-identity {:name sshk-path :exclusive true}
-    (git-pull repo)
-    ) 
-    (json/write-str (map fs/name (fs/list-dir repo-path)))      
-  )
+    (git-pull repo)) 
+  (json/write-str (map fs/name (fs/list-dir (str repo-path "/posts")))))
+
+(defn new-post [req]
+  (let [title (get req "title")
+        body (get req "body")
+        filename (str (.format (new java.text.SimpleDateFormat "yyyy-MM-dd-") (java.util.Date.))
+                      (clojure.string/replace title #" " "-") ".md")
+        file-url (str url "/tree/master/posts/" filename)]
+    (with-identity {:name sshk-path :exclusive true}
+      (git-pull repo))
+    (spit (str repo-path "/posts/" filename) body)
+    (git-add repo (str "posts/" filename))
+    (git-commit repo (str "Add file " filename) {:name name :email email})
+    (with-identity {:name sshk-path :exclusive true} 
+      (git-push repo))
+    (json/write-str (list file-url))
+    ))
+    
 
 
 (defroutes app-routes
-  (GET "/" [] "Hello World 2")
+  (GET "/" [] "Up and running!")
   (GET "/posts" [] (posts))
-  (route/not-found "Not Found"))
+  (PUT "/post/new" request (new-post (json/read-str (slurp (:body request)))))
+  (route/not-found "Route not found!"))
 
 (def app
-  (wrap-defaults app-routes site-defaults))
+  (wrap-defaults app-routes api-defaults))
