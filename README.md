@@ -31,7 +31,7 @@ You will need [Leiningen][] 2.0.0 or above installed.
 
 [leiningen]: https://github.com/technomancy/leiningen
 
-Git must be installed in the API host, and the managed repository must be cloned there. A ssh key is required for pushing changes to the remote repository.
+Git must be installed in the API host, and the managed repository must be cloned there. A ssh key is required for pushing changes to the remote repository. You must allow [ssh](https://gist.github.com/developius/c81f021eb5c5916013dc) on your repo. 
 
 ## Config
 
