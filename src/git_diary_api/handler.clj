@@ -3,13 +3,13 @@
         )
   (:require [clojure.data.json :as json]
             [schema.core :as s]
-            [me.raynes.fs :as fs] 
+            [me.raynes.fs :as fs]
             [compojure.api.sweet :refer :all]
+            [compojure.api.meta :refer [restructure-param]]
             [ring.util.http-response :refer :all]
             [buddy.auth.backends :as backends]
             [buddy.auth.accessrules :refer [wrap-access-rules]]
             [buddy.auth :refer [authenticated?]]
-            [compojure.api.meta :refer [restructure-param]]
             [buddy.auth.middleware :refer [wrap-authentication]]
             [ring.middleware.defaults :refer [wrap-defaults api-defaults]]))
 
@@ -58,11 +58,13 @@
 
 ;; Routes
 (defn posts []
+  (println "Retrieving posts...")
   (with-identity {:name sshk-path :exclusive true}
-    (git-pull repo)) 
+    (git-pull repo))
   (json/write-str (filter (fn [x] (not (= x "index"))) (map fs/name (fs/list-dir (str repo-path "/posts"))))))
 
 (defn new-post [title body]
+  (println "Creating new post with title " title)
   (let [filename (str (.format (new java.text.SimpleDateFormat "yyyy-MM-dd-") (java.util.Date.))
                       (clojure.string/replace title #" " "-") ".md")
         file-url (str url "/tree/master/posts/" filename)]
@@ -77,11 +79,13 @@
     (json/write-str (list file-url))))
     
 (defn get-post [name]
+  (println "Retrieving post " name)
   (with-identity {:name sshk-path :exclusive true}
     (git-pull repo))
-  (slurp (str repo-path "/posts/" name ".md")))
+  (slurp (str repo-path "/posts/" (clojure.string/replace name #"_comma_" ",") ".md")))
 
 (defn delete-post [name]
+  (println "Deleting post " name)
   (let [filename (str name ".md")]
     (fs/delete (str repo-path "/posts/" filename))
     (git-rm repo (str "posts/" filename))
