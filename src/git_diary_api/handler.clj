@@ -84,6 +84,10 @@
     (git-pull repo))
   (slurp (str repo-path "/posts/" (clojure.string/replace name #"_comma_" ",") ".md")))
 
+(defn get-post-link [name]
+  (println "Retrieving post link for " name)
+  (json/write-str (list (str url "/tree/master/posts/" (clojure.string/replace name #"_comma_" ",") ".md"))))
+
 (defn delete-post [name]
   (println "Deleting post " name)
   (let [filename (str (clojure.string/replace name #"_comma_" ",") ".md")]
@@ -109,6 +113,9 @@
    (GET "/post/:name" [name] 
      :auth-rules authenticated? 
      (get-post name))
+   (GET "/post/:name/link" [name]
+     :auth-rules authenticated?
+     (get-post-link name))
    (DELETE "/post/:name" [name] 
      :auth-rules authenticated? 
      (delete-post name))))
