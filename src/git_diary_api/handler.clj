@@ -86,7 +86,7 @@
 
 (defn delete-post [name]
   (println "Deleting post " name)
-  (let [filename (str name ".md")]
+  (let [filename (str (clojure.string/replace name #"_comma_" ",") ".md")]
     (fs/delete (str repo-path "/posts/" filename))
     (git-rm repo (str "posts/" filename))
     (re-index)
